@@ -16,12 +16,12 @@
 - [apriltag2](https://github.com/kai-kai-tang/apriltag2)
 - [carm](https://pypi.org/project/carm/0.1.20260615/)
 - ROS2（代码里使用到 `rclpy`、`cv_bridge`、`message_filters`、`tf2_ros` 等 ROS2 Python 组件）
-- Python 依赖：`numpy`、`opencv-python`、`open3d`、`mmengine`、`transforms3d`、`typing_extensions`
+- Python 依赖：`numpy`、`opencv-python`、`open3d`、`mmengine`、`transforms3d`
 
 示例安装：
 
 ```bash
-pip install numpy==1.26.4 opencv-python==4.7.0.72 open3d==0.19.0 mmengine transforms3d typing_extensions
+pip install numpy==1.26.4 opencv-python==4.7.0.72 open3d==0.19.0 mmengine transforms3d
 pip install carm==0.1.20260615
 ```
 
@@ -33,9 +33,10 @@ pip install carm==0.1.20260615
 ## 目录说明
 
 - `core/`：机械臂控制、相机 ROS2 订阅、视觉匹配、几何变换、RViz 可视化等基础封装。
-- `examples/common/src/`：基础能力示例，包括状态发布、动作模板录制回放、自动采集、相机标定、手眼标定、夹爪标定。
+- `examples/common/src/`：基础能力示例，包括状态发布、动作模板录制（`action_record.py`）与回放（`action_play.py`）、自动采集（`auto_collect.py`）、相机标定、手眼标定、夹爪标定。
 - `examples/benchmark/src/`：抓取基准示例，包括 2D 抓取模板录制/测试和 3D 抓取模板录制/测试。
 - `examples/*/scripts/`：对应 Python 示例的 shell 启动脚本，已预填 ROS 环境和默认参数。
+- `demo/`：开箱即用的演示目录，包含预录制的动作模板（`data/action/`）、采集数据样例（`data/collect/`）、标定结果（`data/calib/`）和可直接运行的启动脚本（`scripts/`）。
 - `data/calib/`：相机参数、手眼标定结果、夹爪模型等标定文件。
 - `data/benchmark/tmpl/`：2D / 3D 抓取模板目录与仓库内置样例。
 - `rviz/`：RViz 配置。
@@ -110,6 +111,9 @@ pip install carm==0.1.20260615
 	- `data/calib/cam_params.json`：2D / 3D 视觉脚本都需要。
 	- `data/calib/calib_handeye.json`：`arm_node.py`、2D / 3D 抓取、夹爪标定都需要。
 	- `data/calib/gripper_body.json`：`arm_node.py` 发布夹爪 Marker 时需要，3D 抓取测试也需要。
+5. 如果你希望快速体验完整流程，可直接使用 `demo/` 目录下的预置数据和脚本：
+	- `demo/scripts/` 中提供了所有核心脚本的副本，参数已预配置指向 `demo/data/`。
+	- 先运行 `demo/scripts/action_record.sh` 录制采集轨迹，再运行 `demo/scripts/auto_collect.sh` 执行自动采集，最后运行 `calib_handeye.sh` / `calib_camera.sh` 完成标定。
 
 ## examples/common/src 说明
 
@@ -141,9 +145,9 @@ pip install carm==0.1.20260615
 bash examples/common/scripts/arm_node.sh
 ```
 
-### create_tmpl_action.py
+### action_record.py
 
-用途：录制非视觉动作模板。每个模板保存为一个 JSON 文件，包含：
+用途：录制非视觉动作模板（又名"动作录制"）。通过拖动或位置控制模式将机械臂移动到目标位姿，按 `s` 保存当前状态为模板。每个模板保存为一个 JSON 文件，包含：
 
 - `T_base_end`
 - `joints`
@@ -167,18 +171,19 @@ bash examples/common/scripts/arm_node.sh
 
 说明：
 
-- `examples/common/scripts/create_tmpl_action.sh` 默认将 `tmpl_dir` 指向 `data/common/calib_handeye/`，这是为了给 `auto_collect.py` 准备手眼标定采集轨迹。
-- 如果你想录制的是通用动作回放模板，请让 `create_tmpl_action.sh` 和 `test_tmpl_action.sh` 指向同一个目录。
+- 录制的模板可以单独用于动作回放（搭配 `action_play.py`），也可以作为 `auto_collect.py` 的采集轨迹输入。
+- `demo/scripts/action_record.sh` 默认将 `tmpl_dir` 指向 `demo/data/action/calib_handeye/`，演示了为手眼标定准备采集轨迹的用法。你也可以将其指向其他目录（如 `demo/data/action/calib_camera/`），用于相机标定或其他采集任务。
+- **与 `auto_collect.py` 搭配使用**：先用 `action_record.py` 录制一组覆盖标定板不同视角的机械臂位姿模板，再用 `auto_collect.py` 自动执行这些模板并在每个位姿处采集图像和机械臂数据。这是手眼标定与相机标定数据采集的推荐工作流。
 
 运行方式：
 
 ```bash
-bash examples/common/scripts/create_tmpl_action.sh
+bash examples/common/scripts/action_record.sh
 ```
 
-### test_tmpl_action.py
+### action_play.py
 
-用途：顺序读取模板目录中的 `0.json`、`1.json`、`2.json`...，循环回放模板里的关节角和夹爪开口。
+用途：顺序读取模板目录中的 `0.json`、`1.json`、`2.json`...，循环回放模板里的关节角和夹爪开口（又名"动作回放"）。可单独使用，也可用于验证 `action_record.py` 录制的模板是否正确。
 
 主要参数：
 
@@ -189,22 +194,24 @@ bash examples/common/scripts/create_tmpl_action.sh
 
 - 启动后会先切换到 `PF` 控制模式。
 - 每轮回放开始前固定等待一次确认。
-- 默认 shell 脚本 `examples/common/scripts/test_tmpl_action.sh` 指向 `data/common/action/`。
+- 默认 shell 脚本 `demo/scripts/action_play.sh` 指向 `demo/data/action/calib_handeye/`。
 
 运行方式：
 
 ```bash
-bash examples/common/scripts/test_tmpl_action.sh
+bash examples/common/scripts/action_play.sh
 ```
 
 ### auto_collect.py
 
-用途：执行一组动作模板，并在每个模板位置采集同步图像和机械臂位姿，通常用于相机标定与手眼标定的数据准备。
+用途：读取 `action_record.py` 录制的一组动作模板，自动依次执行每个模板，并在每个位姿处采集同步图像和机械臂位姿。是手眼标定、相机标定及其他批量数据采集任务的核心自动化工具。
+
+> **典型工作流**：`action_record.py`（录制采集轨迹）→ `auto_collect.py`（自动采集数据）→ `calib_handeye.py` / `calib_camera.py`（执行标定）
 
 主要参数：
 
-- `--tmpl_dir`：动作模板目录。
-- `--img_topic_list`：需要采集的图像话题列表，可传入多路图像。
+- `--tmpl_dir`：动作模板目录（通常由 `action_record.py` 录制生成）。
+- `--img_topic_list`：需要采集的图像话题列表，可传入多路图像（如彩色+深度）。
 - `--data_dir`：结果保存目录。
 - `--debug`：开启后，每个模板执行前等待确认。
 
@@ -217,7 +224,10 @@ bash examples/common/scripts/test_tmpl_action.sh
 
 - 机械臂会先打开夹爪，再切换到 `PF` 控制模式执行模板。
 - `arm_pose.json` 中会记录 `eye_in_hand=true`，后续 `calib_handeye.py` 会读取这个信息。
-- `examples/common/scripts/auto_collect.sh` 默认使用 `data/common/calib_handeye/` 里的模板，并将结果写入 `results/auto_collect/calib_handeye/`。
+- `demo/scripts/auto_collect.sh` 内置了两套配置（注释切换）：
+	- **手眼标定采集**：模板目录指向 `demo/data/action/calib_handeye/`，采集彩色+深度图，结果写入 `demo/data/collect/calib_handeye/`。
+	- **相机标定采集**：模板目录指向 `demo/data/action/calib_camera/`，仅采集彩色图，结果写入 `demo/data/collect/calib_camera/`。
+- 你也可以用 `action_record.py` 为任意采集任务录制自定义模板，然后交给 `auto_collect.py` 批量执行。
 
 运行方式：
 
@@ -499,10 +509,10 @@ bash examples/benchmark/scripts/test_tmpl_grasp_3d.sh
 
 ### 标定与基础调试流程
 
-1. 如果要采集手眼标定数据，先录制一组采集动作模板：
+1. 录制一组采集动作模板（拖动机械臂到多个不同视角，在每个视角按 `s` 保存）：
 
 	```bash
-	bash examples/common/scripts/create_tmpl_action.sh
+	bash examples/common/scripts/action_record.sh
 	```
 
 2. 自动执行这些模板并采集图像 / 位姿：
@@ -535,11 +545,11 @@ bash examples/benchmark/scripts/test_tmpl_grasp_3d.sh
 	bash examples/common/scripts/arm_node.sh
 	```
 
-7. 如需录制和验证通用动作模板，请让录制脚本与测试脚本指向同一目录后再运行：
+7. 如需录制和验证通用动作模板，请让录制脚本与回放脚本指向同一目录后再运行：
 
 	```bash
-	bash examples/common/scripts/create_tmpl_action.sh
-	bash examples/common/scripts/test_tmpl_action.sh
+	bash examples/common/scripts/action_record.sh
+	bash examples/common/scripts/action_play.sh
 	```
 
 ### 2D 抓取流程

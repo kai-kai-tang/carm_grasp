@@ -107,13 +107,19 @@ def save_state(cam_node: CamNode,
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--cam_params_path", type=str, required=True,
+                        help="相机参数文件的路径, 包含内参和畸变参数")
+
     parser.add_argument("--color_img_topic", type=str, required=True,
                         help="RGB 图像的 ROS2 话题名称")
 
-    parser.add_argument("--tmpl_dir", type=str,
+    parser.add_argument("--tmpl_dir", type=str, required=True,
                         help="模板文件的目录")
 
     args = parser.parse_args()
+
+    cam_params_path = args.cam_params_path
 
     color_img_topic = args.color_img_topic
     if color_img_topic is None:
@@ -128,13 +134,13 @@ if __name__ == '__main__':
     # end if
 
     print()
+    print(f"camera parameters file: {BLUE}{cam_params_path}{RESET}")
     print(f"color image topic: {BLUE}{color_img_topic}{RESET}")
     print(f'grasp_2d template will be saved to: {GREEN}{tmpl_dir}{RESET}')
     print()
 
     # 读取相机参数
-    rgbd_params_path = os.path.join(root_dir, 'data/calib/cam_params.json')
-    intrinsic, distortion = read_cam_params(rgbd_params_path)
+    intrinsic, distortion = read_cam_params(cam_params_path)
 
     config = TagMatcher2D.Config(
         intrinsic=intrinsic,
@@ -160,14 +166,15 @@ if __name__ == '__main__':
     keyboard_reader = KeyboardReader()
 
     print()
-    logging.info(f'use keyboard to control: \n{BLUE}'
-                 f'  q: 退出程序\n'
-                 f'  a: 使末端的 z 轴方向与基座的 -z 轴平行\n'
-                 f'  g: 保存抓取时的状态\n'
-                 f'  n: 保存相机距离物体较近时的状态\n'
-                 f'  b: 保存下一个相机距离物体较近时的状态\n'
-                 f'  f: 保存相机距离物体较远时的状态\n'
-                 f'  d: 保存下一个相机距离物体较远时的状态\n{RESET}')
+    print(f'use keyboard to control: \n{BLUE}'
+          f'  q: 退出程序\n'
+          f'  a: 使末端的 z 轴方向与基座的 -z 轴平行\n'
+          f'  g: 保存抓取时的状态\n'
+          f'  n: 保存相机距离物体较近时的状态\n'
+          f'  b: 保存下一个相机距离物体较近时的状态\n'
+          f'  f: 保存相机距离物体较远时的状态\n'
+          f'  d: 保存下一个相机距离物体较远时的状态\n'
+          f'{RESET}')
 
     while rclpy.ok():
 

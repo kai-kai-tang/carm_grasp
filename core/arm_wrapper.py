@@ -33,13 +33,13 @@ class ArmWrapper:
         """位置控制模式"""
 
         MIT = 2
-        """MIT 模式"""
+        """力矩-阻抗-轨迹模式"""
 
         TEACH = 3
         """拖动模式"""
 
         PF = 4
-        """PF 模式"""
+        """力位混合模式"""
     # end class ControlMode
 
     def __init__(self,

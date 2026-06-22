@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-功能说明: 创建机械臂的行动模板文件, 包含机械臂末端位姿, 关节角, 夹爪距离
+功能说明: 执行行动模板文件, 包含机械臂末端位姿, 关节角, 夹爪距离
 """
 
 import argparse
@@ -15,8 +15,6 @@ from typing_extensions import List, Tuple, Dict
 
 # 导入本工程的模块
 
-from create_tmpl_action import load_action  # 同目录下的模块
-
 code_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.normpath(f'{code_dir}/../../../')
 sys.path.append(root_dir)
@@ -27,13 +25,15 @@ from core.utils import (
 )
 from core.arm_wrapper import ArmWrapper
 
+from examples.common.src.action_record import load_action  # 同目录下的模块
+
 
 ######################################################### 全局变量 #########################################################
 
 
 ######################################################### 函数定义 #########################################################
 
-def read_tmpl_action(tmpl_dir: str) -> List[Dict]:
+def read_action_list(tmpl_dir: str) -> List[Dict]:
     """
     读取文件夹内的所有行动模板文件, 包含机械臂末端位姿, 关节角, 夹爪距离
     Args:
@@ -61,7 +61,7 @@ def read_tmpl_action(tmpl_dir: str) -> List[Dict]:
     # end while
 
     return action_tmpl_list
-# end def read_tmpl_action
+# end def read_action_list
 
 
 def do_action(action_tmpl_list: List[Dict],
@@ -97,7 +97,7 @@ def do_action(action_tmpl_list: List[Dict],
             return False
         # end if
 
-        is_ok = arm.set_gripper_dist(gripper_dist, th_dist_err=0.0005)
+        is_ok = arm.set_gripper_dist(gripper_dist)
         if not is_ok:
             logging.warning(f'{YELLOW}failed to move to tmpl gripper dist{RESET}')
             return False
@@ -127,7 +127,7 @@ def run(action_tmpl_list: List[Dict],
     while True:
         print(f"\n{GREEN}start loop {RESET}")
         if not wait_key(True):
-            return False
+            break
         # end if
 
         is_ok = do_action(action_tmpl_list, arm, debug)
@@ -135,6 +135,24 @@ def run(action_tmpl_list: List[Dict],
             break
         # end if
     # end while
+
+    logging.info(f'{GREEN}action loop finished{RESET}, move to the first action template')
+    action_tmpl = action_tmpl_list[0]
+    joints = action_tmpl['joints']
+    gripper_dist = action_tmpl['gripper_dist']
+
+    is_ok = arm.set_joints(joints, move_line=False)
+    if not is_ok:
+        logging.warning(f'{YELLOW}failed to move to tmpl joints{RESET}')
+        return False
+    # end if
+
+    is_ok = arm.set_gripper_dist(gripper_dist)
+    if not is_ok:
+        logging.warning(f'{YELLOW}failed to move to tmpl gripper dist{RESET}')
+        return False
+    # end if
+
 # end def run
 
 ######################################################### 主函数 #########################################################
@@ -146,7 +164,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--tmpl_dir", type=str,
                         help="保存模板文件的目录")
-    
+
     parser.add_argument("--debug", action='store_true',
                         help="是否开启调试模式")
 
@@ -167,7 +185,7 @@ if __name__ == '__main__':
     print()
 
     # 读取模板文件
-    action_tmpl_list = read_tmpl_action(tmpl_dir)
+    action_tmpl_list = read_action_list(tmpl_dir)
     if len(action_tmpl_list) == 0:
         logging.warning(f'{YELLOW}no valid tmpl found in tmpl_dir: {tmpl_dir}{RESET}')
         exit(1)

@@ -12,7 +12,11 @@ root_dir="$(realpath "${script_dir}/../../../")"
 echo "项目根目录: $root_dir"
 echo
 
+
 ############################################## 参数配置 ##############################################
+
+# RGB-D 相机参数文件路径
+cam_params_path="${root_dir}/data/calib/cam_params.json"   
 
 # 彩色图像话题名称
 color_img_topic="/realsense/d405/color/image_rect_raw"
@@ -24,5 +28,6 @@ tmpl_dir="${root_dir}/data/benchmark/tmpl/grasp_2d"
 ############################################## 可执行程序 ##############################################
 
 python3 ${script_dir}/../src/create_tmpl_grasp_2d.py \
+    --cam_params_path ${cam_params_path} \
     --color_img_topic ${color_img_topic} \
     --tmpl_dir ${tmpl_dir}

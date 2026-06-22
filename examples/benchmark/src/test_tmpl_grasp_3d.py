@@ -603,6 +603,15 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("--cam_params_path", type=str, required=True,
+                        help="相机参数文件的路径, 包含内参和畸变参数")
+
+    parser.add_argument("--handeye_calib_path", type=str, required=True,
+                        help="手眼标定文件的路径, 包含相机与机械臂的位姿关系")
+    
+    parser.add_argument("--gripper_path", type=str, required=True,
+                        help="夹爪标定文件的路径, 包含夹爪的尺寸和位姿信息")
+
     parser.add_argument("--color_img_topic", type=str, required=True,
                         help="彩色图像的 ROS2 话题名称")
 
@@ -611,7 +620,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--tmpl_dir", type=str, required=True,
                         help="模板文件的目录")
-    
+
     parser.add_argument("--detect_pose", type=str, required=True,
                         help="检测状态下的位姿, 格式[tx,ty,tz,qx,qy,qz,qw], 其中 t 是位移, q 是旋转四元数")
 
@@ -620,7 +629,12 @@ if __name__ == '__main__':
 
     parser.add_argument("--debug", action='store_true',
                         help="是否开启调试模式")
+
     args = parser.parse_args()
+
+    cam_params_path = args.cam_params_path
+    handeye_calib_path = args.handeye_calib_path
+    gripper_path = args.gripper_path
 
     color_img_topic = args.color_img_topic
     if color_img_topic is None:
@@ -653,6 +667,9 @@ if __name__ == '__main__':
     # end if
 
     print()
+    print(f"RGB-D camera parameters file: {BLUE}{cam_params_path}{RESET}")
+    print(f"handeye calib file: {BLUE}{handeye_calib_path}{RESET}")
+    print(f"gripper calib file: {BLUE}{gripper_path}{RESET}")
     print(f"color image topic: {BLUE}{color_img_topic}{RESET}")
     print(f"depth image topic: {BLUE}{depth_img_topic}{RESET}")
     print(f'load grasp template from: {BLUE}{tmpl_dir}{RESET}')
@@ -663,24 +680,19 @@ if __name__ == '__main__':
     print()
 
     # 读取相机参数
-    camera_param_path = os.path.join(root_dir, 'data/calib/cam_params.json')
-    camera_param_path = os.path.normpath(camera_param_path)
-    intrinsic, distortion, depth_scale = read_rgbd_params(camera_param_path)
+    intrinsic, distortion, depth_scale = read_rgbd_params(cam_params_path)
     if intrinsic is None or depth_scale is None:
         exit(1)
     # end if
 
     # 读取手眼标定矩阵
     print()
-    handeye_calib_path = os.path.join(root_dir, 'data/calib/calib_handeye.json')
     T_end_cam, _ = read_handeye_calib(handeye_calib_path)
-
-    # 读取夹爪模型
-    gripper_path = os.path.join(root_dir, 'data/calib/gripper_body.json')
-    if not os.path.exists(gripper_path):
-        logging.error(f'no gripper body file found at: {gripper_path}, exiting')
+    if T_end_cam is None:
         exit(1)
     # end if
+
+    # 读取夹爪模型
     gripper_data_dict = mmengine.load(gripper_path)
     gripper_width = gripper_data_dict['width']
     gripper_thickness = gripper_data_dict['thickness']

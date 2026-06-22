@@ -39,6 +39,13 @@ from core.arm_ros_utils import ArmNode, pose_to_transform_stamped
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--handeye_calib_path", type=str, required=True,
+                        help="手眼标定文件的路径, 包含相机与机械臂的位姿关系")
+
+    parser.add_argument("--gripper_path", type=str, required=True,
+                        help="夹爪标定文件的路径, 包含夹爪的尺寸和位姿信息")
+
     parser.add_argument("--frame_id", type=str, required=True,
                         default="base_link",
                         help="机械臂发布位姿的坐标系的名称")
@@ -48,26 +55,24 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    handeye_calib_path = args.handeye_calib_path
+    gripper_path = args.gripper_path
+
     frame_id = args.frame_id
     pc_frame_id = args.pc_frame_id
 
+    print()
+    print(f'handeye_calib_path: {BLUE}{handeye_calib_path}{RESET}')
+    print(f'gripper_path: {BLUE}{gripper_path}{RESET}')
     print(f'frame_id: {BLUE}{frame_id}{RESET}')
     print(f'pc_frame_id: {BLUE}{pc_frame_id}{RESET}')
     print()
 
-    calib_dir = os.path.normpath(os.path.join(root_dir, 'data/calib'))  # 标定文件夹路径
-
     # 读取手眼标定矩阵
-    handeye_calib_path = os.path.join(calib_dir, 'calib_handeye.json')
     T_end_cam, _ = read_handeye_calib(handeye_calib_path)
     print()
 
     # 读取夹爪模型
-    gripper_path = os.path.join(root_dir, 'data/calib/gripper_body.json')
-    if not os.path.exists(gripper_path):
-        logging.error(f'no gripper body file found at: {gripper_path}, exiting')
-        exit(1)
-    # end if
     gripper_data_dict = mmengine.load(gripper_path)
     gripper_width = gripper_data_dict['width']
     gripper_thickness = gripper_data_dict['thickness']
@@ -95,13 +100,14 @@ if __name__ == '__main__':
     keyboard_reader = KeyboardReader()
 
     print()
-    logging.info(f'use keyboard to control: \n{BLUE}'
-                 f'  q: 退出程序\n'
-                 f'  v: 打印当前机械臂状态\n'
-                 f'  a: 调整末端,使末端坐标系的 Z 轴指向基座坐标系的 -Z 轴\n'
-                 f'  c: 调整末端,使相机坐标系的 Z 轴指向下方\n'
-                 f'  <: 缩小夹爪之间的距离\n'
-                 f'  >: 放大夹爪之间的距离\n{RESET}')
+    print(f'use keyboard to control: \n{BLUE}'
+          f'  q: 退出程序\n'
+          f'  v: 打印当前机械臂状态\n'
+          f'  a: 调整末端,使末端坐标系的 Z 轴指向基座坐标系的 -Z 轴\n'
+          f'  c: 调整末端,使相机坐标系的 Z 轴指向下方\n'
+          f'  <: 缩小夹爪之间的距离\n'
+          f'  >: 放大夹爪之间的距离\n'
+          f'{RESET}')
 
     while rclpy.ok():
 

@@ -21,8 +21,6 @@ import rclpy
 
 # 导入本工程的模块
 
-from create_tmpl_action import load_action  # 同目录下的模块
-
 code_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.normpath(f'{code_dir}/../../../')
 sys.path.append(root_dir)
@@ -33,39 +31,10 @@ from core.utils import (
 )
 from core.arm_wrapper import ArmWrapper
 from core.cam_ros_utils import CamNode
+from examples.common.src.action_play import read_action_list  # 同目录下的模块
 
 
 ######################################################### 函数定义 #########################################################
-
-def read_tmpl_action(tmpl_dir: str) -> List[Dict]:
-    """
-    读取文件夹内的所有行动模板文件, 包含机械臂末端位姿, 关节角, 夹爪距离
-    Args:
-        tmpl_dir (str): 模板文件夹路径
-
-    Returns:
-        List[Dict]: 包含所有行动模板的列表,每个模板为一个字典,包含机械臂末端位姿、关节角和夹爪距离
-    """
-    action_tmpl_list = []
-    tmpl_idx = 0
-    while True:
-        file_path = os.path.join(tmpl_dir, f'{tmpl_idx}.json')
-        T_base_end, joints, gripper_dist = load_action(file_path)
-        if T_base_end is None or joints is None or gripper_dist is None:
-            break
-        # end if
-
-        action_tmpl_list.append({
-            'T_base_end': T_base_end,
-            'joints': joints,
-            'gripper_dist': gripper_dist
-        })
-
-        tmpl_idx += 1
-    # end while
-
-    return action_tmpl_list
-# end def read_tmpl_action
 
 
 ######################################################### 主函数 #########################################################
@@ -110,7 +79,7 @@ if __name__ == '__main__':
     print()
 
     # 读取模板文件
-    action_tmpl_list = read_tmpl_action(tmpl_dir)
+    action_tmpl_list = read_action_list(tmpl_dir)
     if len(action_tmpl_list) == 0:
         logging.warning(f'{YELLOW}no valid tmpl found in tmpl_dir: {tmpl_dir}{RESET}')
         exit(1)

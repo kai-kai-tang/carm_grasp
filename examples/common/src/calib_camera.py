@@ -173,6 +173,13 @@ if __name__ == '__main__':
             continue
         # end if
 
+        # if True:
+        #     bgr_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        #     detector.draw(bgr_img, tag2d_list)
+        #     cv2.imshow("tag detection", bgr_img)
+        #     cv2.waitKey(500)
+        # # end if
+
         tag2d_list_list.append(tag2d_list)
     # end for
 

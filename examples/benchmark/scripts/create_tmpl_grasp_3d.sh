@@ -14,6 +14,12 @@ echo
 
 ############################################## 参数配置 ##############################################
 
+# RGB-D 相机参数文件路径
+cam_params_path="${root_dir}/data/calib/cam_params.json" 
+
+# 手眼标定文件路径
+handeye_calib_path="${root_dir}/data/calib/handeye_calib.json"
+
 # 彩色图像话题名称
 color_img_topic="/realsense/d405/color/image_rect_raw"
 
@@ -27,6 +33,8 @@ tmpl_dir="${root_dir}/data/benchmark/tmpl/grasp_3d"
 ############################################## 可执行程序 ##############################################
 
 python3 ${script_dir}/../src/create_tmpl_grasp_3d.py \
+    --cam_params_path ${cam_params_path} \
+    --handeye_calib_path ${handeye_calib_path} \
     --color_img_topic ${color_img_topic} \
     --depth_img_topic ${depth_img_topic} \
     --tmpl_dir ${tmpl_dir}

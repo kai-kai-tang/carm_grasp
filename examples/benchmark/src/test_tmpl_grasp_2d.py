@@ -482,10 +482,17 @@ def run(T_end_cam: np.ndarray,
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--cam_params_path", type=str, required=True,
+                        help="相机参数文件的路径, 包含内参和畸变参数")
+
+    parser.add_argument("--handeye_calib_path", type=str, required=True,
+                        help="手眼标定文件的路径, 包含相机与机械臂的位姿关系")
+
     parser.add_argument("--color_img_topic", type=str, required=True,
                         help="RGB 图像的 ROS2 话题名称")
 
-    parser.add_argument("--tmpl_dir", type=str,
+    parser.add_argument("--tmpl_dir", type=str, required=True,
                         help="模板文件的目录")
 
     parser.add_argument("--detect_pose", type=str, required=True,
@@ -498,6 +505,9 @@ if __name__ == '__main__':
                         help="是否开启调试模式")
 
     args = parser.parse_args()
+
+    cam_params_path = args.cam_params_path
+    handeye_calib_path = args.handeye_calib_path
 
     color_img_topic = args.color_img_topic
     if color_img_topic is None:
@@ -520,6 +530,8 @@ if __name__ == '__main__':
     debug = args.debug
 
     print()
+    print(f"camera parameters file: {BLUE}{cam_params_path}{RESET}")
+    print(f"handeye calib file: {BLUE}{handeye_calib_path}{RESET}")
     print(f"color image topic: {BLUE}{color_img_topic}{RESET}")
     print(f'grasp_2d template dir: {BLUE}{tmpl_dir}{RESET}')
     print(f'detect pose: {BLUE}{detect_pose}{RESET}')
@@ -528,8 +540,7 @@ if __name__ == '__main__':
     print()
 
     # 读取相机参数
-    rgbd_params_path = os.path.join(root_dir, 'data/calib/cam_params.json')
-    intrinsic, distortion = read_cam_params(rgbd_params_path)
+    intrinsic, distortion = read_cam_params(cam_params_path)
 
     # 初始化匹配器
     config = TagMatcher2D.Config(
@@ -539,8 +550,10 @@ if __name__ == '__main__':
     matcher = TagMatcher2D(config)
 
     # 读取手眼标定结果
-    handeye_calib_path = os.path.join(root_dir, 'data/calib/calib_handeye.json')
     T_end_cam, _ = read_handeye_calib(handeye_calib_path)
+    if T_end_cam is None:
+        exit(1)
+    # end if
 
     # 读取抓取模板数据
     tmpl_dir = os.path.normpath(tmpl_dir)  # 规范化路径

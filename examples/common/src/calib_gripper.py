@@ -31,7 +31,7 @@ root_dir = os.path.normpath(f'{code_dir}/../../../')
 sys.path.append(root_dir)
 
 from core.utils import (
-    GREEN, RESET,
+    GREEN, RESET, RED, BLUE,
     KeyboardReader, read_handeye_calib, read_rgbd_params
 )
 from core.arm_wrapper import ArmWrapper
@@ -163,6 +163,16 @@ def compute_corners3d(gray_img: np.ndarray,
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--cam_params_path", type=str, required=True,
+                        help="相机参数文件的路径, 包含内参和畸变参数")
+
+    parser.add_argument("--handeye_calib_path", type=str, required=True,
+                        help="手眼标定文件的路径, 包含相机与机械臂的位姿关系")
+
+    parser.add_argument("--gripper_path", type=str, required=True,
+                        help="夹爪标定文件的路径, 包含夹爪的尺寸和位姿信息")
+
     parser.add_argument("--color_img_topic", type=str, required=True,
                         help="RGB 图像的 ROS2 话题名称")
 
@@ -176,6 +186,10 @@ if __name__ == '__main__':
                         help='夹爪的宽度和厚度(单位: m), 格式: [width,thickness]',
                         default='[0.015,0.005]')
     args = parser.parse_args()
+
+    cam_params_path = args.cam_params_path
+    handeye_calib_path = args.handeye_calib_path
+    gripper_path = args.gripper_path
 
     color_img_topic = args.color_img_topic
     if color_img_topic is None:
@@ -200,6 +214,9 @@ if __name__ == '__main__':
     gripper_thickness = gripper_size[1]
 
     print()
+    print(f"RGB-D camera parameters file: {GREEN}{cam_params_path}{RESET}")
+    print(f"handeye calib file: {GREEN}{handeye_calib_path}{RESET}")
+    print(f"gripper calib file save path: {GREEN}{gripper_path}{RESET}")
     print(f"color image topic: {GREEN}{color_img_topic}{RESET}")
     print(f"depth image topic: {GREEN}{depth_img_topic}{RESET}")
     print(f"point cloud frame id: {GREEN}{pc_frame_id}{RESET}")
@@ -209,19 +226,17 @@ if __name__ == '__main__':
     calib_dir = os.path.normpath(calib_dir)  # 规范化路径
 
     # 读取相机参数
-    camera_param_path = os.path.join(calib_dir, 'cam_params.json')
-    intrinsic, distortion, depth_scale = read_rgbd_params(camera_param_path)
+    intrinsic, distortion, depth_scale = read_rgbd_params(cam_params_path)
     print()
 
     # 读取手眼标定矩阵
-    handeye_calib_path = os.path.join(calib_dir, 'calib_handeye.json')
     T_end_cam, _ = read_handeye_calib(handeye_calib_path)
     print()
 
     # 创建机械臂对象
     arm = ArmWrapper()
     if not arm.is_connected():
-        logging.error('\033[91mfailed to connect to arm, exiting {RESET}')   # 红色打印
+        logging.error(f'{RED}failed to connect to arm, exiting {RESET}')   # 红色打印
         exit(1)
     # end if
 
@@ -237,15 +252,11 @@ if __name__ == '__main__':
     # 初始化夹爪对象
     gb = GripperBody(width=gripper_width, thickness=gripper_thickness)
 
-    # 创建文件夹用于保存结果
-    calib_save_path = os.path.join(calib_dir, 'gripper_body.json')
-    logging.info(f'gripper calib results will be saved to: {calib_save_path}')
-
     # 标定数据字典
     calib_data = {}
-    if os.path.exists(calib_save_path):
-        calib_data = mmengine.load(calib_save_path)
-        logging.info(f'Loaded existing gripper calib data from: {GREEN}{calib_save_path}{RESET}')
+    if os.path.exists(gripper_path):
+        calib_data = mmengine.load(gripper_path)
+        logging.info(f'Loaded existing gripper calib data from: {GREEN}{gripper_path}{RESET}')
     # end if
 
     if 'width' in calib_data:
@@ -269,6 +280,14 @@ if __name__ == '__main__':
     # end if
 
     print()
+    print(f'use keyboard to control: \n{BLUE}'
+          f'  q: 退出程序\n'
+          f'  a: 调整末端姿态,使末端坐标系的 Z 轴指向下方\n'
+          f'  t: 从当前 RGB-D 图像计算夹爪在相机坐标系下的位姿\n'
+          f'  ,: 缩小夹爪\n'
+          f'  .: 放大夹爪\n'
+          f'  s: 保存标定结果到文件\n'
+          f'{RESET}')
 
     while rclpy.ok():
 
@@ -360,8 +379,8 @@ if __name__ == '__main__':
                 continue
             # end if
 
-            mmengine.dump(calib_data, calib_save_path, indent=4)
-            logging.info(f'Saved gripper calibration data to: {GREEN}{calib_save_path}{RESET}')
+            mmengine.dump(calib_data, gripper_path, indent=4)
+            logging.info(f'Saved gripper calibration data to: {GREEN}{gripper_path}{RESET}')
         # end if
 
     # end while

@@ -44,6 +44,13 @@ from core.vision_utils import TagMatcher3D, depth_mean_filter
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--cam_params_path", type=str, required=True,
+                        help="相机参数文件的路径, 包含内参和畸变参数")
+
+    parser.add_argument("--handeye_calib_path", type=str, required=True,
+                        help="手眼标定文件的路径, 包含相机与机械臂的位姿关系")
+
     parser.add_argument("--color_img_topic", type=str, required=True,
                         help="RGB 图像的 ROS2 话题名称")
 
@@ -54,6 +61,9 @@ if __name__ == '__main__':
                         help="模板文件的目录")
 
     args = parser.parse_args()
+
+    cam_params_path = args.cam_params_path
+    handeye_calib_path = args.handeye_calib_path
 
     color_img_topic = args.color_img_topic
     if color_img_topic is None:
@@ -74,14 +84,19 @@ if __name__ == '__main__':
     # end if
 
     print()
+    print(f"RGB-D camera parameters file: {BLUE}{cam_params_path}{RESET}")
+    print(f"handeye calib file: {BLUE}{handeye_calib_path}{RESET}")
     print(f"color image topic: {BLUE}{color_img_topic}{RESET}")
     print(f"depth image topic: {BLUE}{depth_img_topic}{RESET}")
     print(f'grasp template will be saved to: {BLUE}{tmpl_dir}{RESET}')
     print()
 
     # 读取相机参数
-    rgbd_params_path = os.path.join(root_dir, 'data/calib/cam_params.json')
-    intrinsic, distortion, depth_scale = read_rgbd_params(rgbd_params_path)
+    intrinsic, distortion, depth_scale = read_rgbd_params(cam_params_path)
+    if intrinsic is None or distortion is None or depth_scale is None:
+        logging.error('read camera parameters failed, exiting')
+        exit(1)
+    # end if
 
     config = TagMatcher3D.Config(
         intrinsic=intrinsic,
@@ -92,15 +107,16 @@ if __name__ == '__main__':
 
     # 读取手眼标定矩阵
     print()
-    handeye_calib_path = os.path.join(root_dir, 'data/calib/calib_handeye.json')
     T_end_cam, _ = read_handeye_calib(handeye_calib_path)
-    logging.info(f'T_end_cam: \n{GREEN}{T_end_cam}{RESET}')
-    print()
+    if T_end_cam is None:
+        logging.error('read handeye calib failed, exiting')
+        exit(1)
+    # end if
 
     # 创建机械臂对象
     arm = ArmWrapper()
     if not arm.is_connected():
-        logging.error('\033[91mfailed to connect to arm, exiting {RESET}')   # 红色打印
+        logging.error(f'{RED}failed to connect to arm, exiting{RESET}')   # 红色打印
         exit(1)
     # end if
 
@@ -116,14 +132,15 @@ if __name__ == '__main__':
     os.makedirs(tmpl_dir, exist_ok=True)
 
     print()
-    logging.info(f'use keyboard to control: \n{BLUE}'
-                 f'  q: 退出程序\n'
-                 f'  <: 缩小夹爪距离\n'
-                 f'  >: 放大夹爪距离\n'
-                 f'  a: 使末端的 z 轴方向与基座的 -z 轴平行\n'
-                 f'  c: 使相机的 z 轴方向与基座的 -z 轴平行\n'
-                 f'  g: 保存抓取时的状态\n'
-                 f'  r: 保存准备阶段的状态\n{RESET}')
+    print(f'use keyboard to control: \n{BLUE}'
+          f'  q: 退出程序\n'
+          f'  <: 缩小夹爪距离\n'
+          f'  >: 放大夹爪距离\n'
+          f'  a: 使末端的 z 轴方向与基座的 -z 轴平行\n'
+          f'  c: 使相机的 z 轴方向与基座的 -z 轴平行\n'
+          f'  g: 保存抓取时的状态\n'
+          f'  r: 保存准备阶段的状态\n'
+          f'{RESET}')
 
     while rclpy.ok():
 

@@ -7,10 +7,22 @@ export ROS_DOMAIN_ID=1              # 设置 ROS_DOMAIN_ID,确保与其他设备
 
 script_dir=$(dirname "$(realpath "$0")")
 echo "当前脚本所在的目录: $script_dir"
+
+root_dir="$(realpath "${script_dir}/../../../")"
+echo "项目根目录: $root_dir"
 echo
 
 
 ############################################## 参数配置 ##############################################
+
+# RGB-D 相机内参文件路径
+cam_params_path="${root_dir}/data/calib/cam_params.json"
+
+# 机械臂手眼标定结果文件路径
+handeye_calib_path="${root_dir}/data/calib/calib_handeye.json"
+
+# 夹爪参数文件路径( 输入输出 )
+gripper_path="${root_dir}/data/calib/gripper_body.json"
 
 # 彩色图像话题名称
 color_img_topic="/realsense/d405/color/image_rect_raw"
@@ -28,7 +40,10 @@ gripper_size='[0.015,0.005]'
 ############################################## 可执行程序 ##############################################
 
 python3 ${script_dir}/../src/calib_gripper.py \
-    --color_img_topic ${color_img_topic} \
-    --depth_img_topic ${depth_img_topic} \
-    --pc_frame_id ${pc_frame_id} \
-    --gripper_size ${gripper_size}
+    --cam_params_path "${cam_params_path}" \
+    --handeye_calib_path "${handeye_calib_path}" \
+    --gripper_path "${gripper_path}" \
+    --color_img_topic "${color_img_topic}" \
+    --depth_img_topic "${depth_img_topic}" \
+    --pc_frame_id "${pc_frame_id}" \
+    --gripper_size "${gripper_size}"
